@@ -1,0 +1,232 @@
+Title
+Microsoft.Data.SQLClient 5.2.0 fails to work with .Net 8
+
+Question (author / dates)
+Author: Moshe Yalovsky
+Created: 2024-05-04T22:39:27.66+00:00
+Updated: 2025-02-19T12:08:16.3433333+00:00
+Answer count: 8
+
+Question body
+I am having issues creating a Class library with C# and .net 8 that uses Microsoft.Data.SQLClient. version 5.2.0 which states that it will run on .net 8 platform.
+
+Here is the code for the class library:
+
+```csharp
+using System.Data;
+using System.Reflection.Metadata.Ecma335;
+using Microsoft.Data.SqlClient;
+
+namespace SQLClientDemo
+{
+   public class ConnectionString
+   {
+
+      public static string OUConnectionString(int OUID)
+      {
+         string returnValue = "";
+         try
+         {
+
+            string connectionString = "Server = ****;Database=AchEnterprise;User ID = sa; Password =****;";
+            using SqlConnection conn = new SqlConnection(connectionString);
+
+            conn.Open();
+            SqlCommand cmdGetOUConStrings = new SqlCommand("SPN_OU_GetAll", conn);
+            cmdGetOUConStrings.CommandType = CommandType.StoredProcedure;
+            SqlDataReader rdr = cmdGetOUConStrings.ExecuteReader();
+
+            while (rdr.Read())
+            {
+               if (rdr.GetInt32(0)==OUID) {
+                  if (!rdr.IsDBNull(4))
+                  {
+                     returnValue = rdr.GetString(4);
+                  }
+               }
+               break;
+            }
+         }
+         catch (Exception Ex)
+         {
+            throw Ex;
+         }
+         return returnValue;
+      }
+
+
+   }
+}
+```
+
+I created a simple Console application to test the class library:
+
+```csharp
+// See https://aka.ms/new-console-template for more information
+
+Console.WriteLine("Hello, World!");
+
+string OUConnectionString = "";
+OUConnectionString = SQLClientDemo.ConnectionString.OUConnectionString(1004);
+Console.WriteLine(OUConnectionString);
+Console.ReadLine();
+```
+
+On this line:
+```csharp
+OUConnectionString = SQLClientDemo.ConnectionString.OUConnectionString(1004);
+```
+
+I got the following error:
+
+```
+System.IO.FileNotFoundException
+  HResult=0x80070002
+  Message=Could not load file or assembly 'Microsoft.Data.SqlClient, Version=5.0.0.0, Culture=neutral, PublicKeyToken=23ec7fc2d6eaa4a5'. The system cannot find the file specified.
+  Source=SQLClientDemo
+  StackTrace:
+   at SQLClientDemo.ConnectionString.OUConnectionString(Int32 OUID) in C:\Dev\Achieve\2022Projects\SQLClientDemo\ConnectionString.cs:line 40
+   at Program.<Main>$(String[] args) in C:\Users\myalo\source\repos\ConsoleApp1\ConsoleApp1\Program.cs:line 6
+```
+
+Here are the SQLClientDemo and Console app project files:
+
+```xml
+<!-- Class library project (.csproj) -->
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="5.2.0" />
+  </ItemGroup>
+
+</Project>
+```
+
+```xml
+<!-- Console app project (.csproj) -->
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="Achieve.Common">
+      <HintPath>bin\Debug\net8.0\Achieve.Common.dll</HintPath>
+    </Reference>
+    <Reference Include="SQLClientDemo">
+      <HintPath>..\..\..\..\..\..\Dev\Achieve\2022Projects\SQLClientDemo\bin\Debug\net8.0\SQLClientDemo.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+</Project>
+```
+
+I tried copying the SQLClientDemo.dll to the bin directory of the console app and reference it there. Then I got a different error:
+
+```
+System.PlatformNotSupportedException
+  HResult=0x80131539
+  Message=Microsoft.Data.SqlClient is not supported on this platform.
+  Source=SQLClientDemo
+  StackTrace:
+   at SQLClientDemo.ConnectionString.OUConnectionString(Int32 OUID) in C:\Dev\Achieve\2022Projects\SQLClientDemo\ConnectionString.cs:line 37
+   at Program.<Main>$(String[] args) in C:\Users\myalo\source\repos\ConsoleApp1\ConsoleApp1\Program.cs:line 6
+```
+
+I spent a few days trying to resolve this issue and would appreciate any help, insight or suggestion on how to resolve it.
+
+Answers (cleaned — each one as posted)
+
+Answer by Tácito Fieker (suggested)
+The problem remains the same when creating a Class Library (DLL) using "Microsoft.Data.SQLClient".
+
+It was necessary to copy the file:
+
+....nuget\packages\microsoft.data.sqlclient\5.2.2\runtimes\win\lib\net8.0\Microsoft.Data.SqlClient.dll
+
+to the BIN folder.
+
+I don't know why there are several different versions in the NuGet folder!! However, only this one works with my DLL.
+
+If you create an EXE type app, these dependent DLLS are copied correctly to the folder. However, for Class Library (dll), you need to find out which file is correct and then copy it manually. I also needed to copy:
+
+- Microsoft.Data.SqlClient.SNI.dll
+- Microsoft.Identity.Client.dll
+
+Kind Regards,
+Tácito Fieker — CADGRAPH.
+
+Answer by Jiale (Microsoft Q&A response)
+Your problem may be caused by two different issues: File not found exception and Platform not supported exception.
+
+To resolve:
+
+Solve file not found exception
+- Ensure the Console application project has the Microsoft.Data.SqlClient package installed (check csproj includes the package reference).
+- Make sure Microsoft.Data.SqlClient.dll exists in the bin directory.
+
+Solve platform not supported exception
+- Make sure your application is running in 64-bit mode. In Visual Studio, set Target Platform to x64 under Build settings.
+- Add properties to your project file to specify platform, for example:
+
+```xml
+<PropertyGroup>
+  <OutputType>Exe</OutputType>
+  <TargetFramework>net8.0</TargetFramework>
+  <ImplicitUsings>enable</ImplicitUsings>
+  <Nullable>enable</Nullable>
+  <Platforms>x64</Platforms>
+</PropertyGroup>
+```
+
+If the problem persists, report back.
+
+Answer by Bruce (SqlWork.com)
+Recommendation: use dotnet publish to build the folder to run the console app from — Microsoft.Data.SqlClient has many dependent DLLs that must be present.
+
+Example of DLLs that appear after publishing (example list):
+
+Azure.Core.dll
+Azure.Identity.dll
+Microsoft.Bcl.AsyncInterfaces.dll
+Microsoft.Data.SqlClient.dll
+Microsoft.Extensions.Configuration.Abstractions.dll
+Microsoft.Identity.Client.dll
+Microsoft.IdentityModel.Tokens.dll
+System.Memory.Data.dll
+...
+
+Answer by Karen Payne (MVP)
+Notes:
+- If SQLClientDemo is in a different VS solution, add it to the current solution or create a local NuGet package and reference it properly.
+- Use ProjectReference instead of manual Reference/HintPath copying. Example:
+
+```xml
+<ItemGroup>
+  <ProjectReference Include="..\\CommonLibrary\\CommonLibrary.csproj" />
+  <ProjectReference Include="..\\SqlServerLibrary\\SqlServerLibrary.csproj" />
+</ItemGroup>
+```
+
+That copies compiled DLLs to the main assembly debug/release folder, which helps avoid the assembly-missing/platform issues.
+
+Answer by AlvaroGT
+Asks if anyone found a solution; references GitHub issue: https://github.com/dotnet/SqlClient/issues/1945 and notes the bug was solved for WPF/WinForms but not for class libraries. (Short follow-up comment.)
+
+Short summary / recommended next steps (practical)
+1. Prefer project references: add SQLClientDemo as a ProjectReference in the Console app solution so build/publish copies dependencies automatically.
+2. Install package in the app (not only the class lib): add PackageReference to the Console app or publish with dotnet publish to gather all runtime DLLs.
+3. Publish for the right runtime / platform: dotnet publish -r win-x64 (or appropriate RID) or ensure app runs x64 to avoid PlatformNotSupportedException.
+4. If you must use prebuilt DLLs: copy the correct runtime Microsoft.Data.SqlClient.dll and dependent DLLs (SNI, Identity packages) into the app bin folder — but prefer publish/project references instead.
+
+If you'd like, I can produce a minimal README-style summary plus dotnet publish command examples tailored to your OS/RID.
