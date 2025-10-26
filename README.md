@@ -2,6 +2,9 @@
 
 RESTful API server for file storage application built with Node.js, Express, and SQLite.
 
+## Here's the demo
+https://graceful-raindrop-411107.netlify.app
+
 ## Features
 
 - File upload/download with validation (txt, jpg, png, json, pdf)
