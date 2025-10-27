@@ -3,7 +3,7 @@
 RESTful API server for file storage application built with Node.js, Express, and SQLite.
 
 ## Here's the demo
-https://graceful-raindrop-411107.netlify.app
+[Deployed app](https://tranquil-kleicha-7cc256.netlify.app/)
 
 ## Features
 
