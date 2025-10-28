@@ -4,6 +4,7 @@ RESTful API server for file storage application built with Node.js, Express, and
 
 ## Here's the demo
 [Deployed app](https://tranquil-kleicha-7cc256.netlify.app/)
+ - Site got taken down 3 times by netlify, don't know what's the issue :/
 
 ## Features
 
